@@ -105,7 +105,7 @@ ZEND_BEGIN_MODULE_GLOBALS(yaf)
 	zval 		 modules;
 	zval        *default_route;
 	zval        active_ini_file_section;
-	zval        *ini_wanted_section;
+	zval        *ini_wanted_section;		// 设置的配置节
 	uint        parsing_flag;
 	zend_bool	use_namespace;
 ZEND_END_MODULE_GLOBALS(yaf)

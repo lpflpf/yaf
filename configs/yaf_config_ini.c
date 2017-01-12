@@ -118,6 +118,7 @@ static void yaf_config_ini_simple_parser_cb(zval *key, zval *value, zval *index,
 	zval element;
 	switch (callback_type) {
 		case ZEND_INI_PARSER_ENTRY:
+			// 解析 xxx.xxx.xxx
 			{
 				char *skey, *seg, *ptr;
 				zval *pzval, *dst;
@@ -127,31 +128,33 @@ static void yaf_config_ini_simple_parser_cb(zval *key, zval *value, zval *index,
 				}
 
 				dst = arr;
+				// 分配内存，并赋值key.类似malloc + memcpy ?
 				skey = estrndup(Z_STRVAL_P(key), Z_STRLEN_P(key));
 				if ((seg = php_strtok_r(skey, ".", &ptr))) {
 					do {
 						char *real_key = seg;
 						seg = php_strtok_r(NULL, ".", &ptr);
+						// 若没有该Key值
 						if ((pzval = zend_symtable_str_find(Z_ARRVAL_P(dst), real_key, strlen(real_key))) == NULL) {
+							// 后面还有'.'，则是数组
 							if (seg) {
 								zval tmp;
 								array_init(&tmp);
-								pzval = zend_symtable_str_update(Z_ARRVAL_P(dst), 
-										real_key, strlen(real_key), &tmp);
+								pzval = zend_symtable_str_update(Z_ARRVAL_P(dst), real_key, strlen(real_key), &tmp);
 							} else {
 								ZVAL_COPY(&element, value);
-								zend_symtable_str_update(Z_ARRVAL_P(dst), 
-										real_key, strlen(real_key), &element);
+								zend_symtable_str_update(Z_ARRVAL_P(dst), real_key, strlen(real_key), &element);
 								break;
 							}
 						} else {
+							// 去引用，分离变量, 或者说copy一份数据，赋值给pzval。
+							// http://www.yesky.com/imagesnew/software/php/zh/zend.arguments.write-safety.html
 							SEPARATE_ZVAL(pzval);
 							if (IS_ARRAY != Z_TYPE_P(pzval)) {
 								if (seg) {
 									zval tmp;
 									array_init(&tmp);
-									pzval = zend_symtable_str_update(Z_ARRVAL_P(dst), 
-											real_key, strlen(real_key), &tmp);
+									pzval = zend_symtable_str_update(Z_ARRVAL_P(dst), real_key, strlen(real_key), &tmp);
 								} else {
 									ZVAL_DUP(&element, value);
 									zend_symtable_str_update(Z_ARRVAL_P(dst), 
@@ -316,6 +319,10 @@ static void yaf_config_ini_parser_cb(zval *key, zval *value, zval *index, int ca
 /* }}} */
 
 yaf_config_t *yaf_config_ini_instance(yaf_config_t *this_ptr, zval *filename, zval *section_name) /* {{{ */ {
+/*
+ * filename 初始化载入的文件名，或者配置类
+ * section_name 配置节
+ */
 	if (filename && Z_TYPE_P(filename) == IS_ARRAY) {
 		if (Z_ISUNDEF_P(this_ptr)) {
 			object_init_ex(this_ptr, yaf_config_ini_ce);
@@ -345,8 +352,8 @@ yaf_config_t *yaf_config_ini_instance(yaf_config_t *this_ptr, zval *filename, zv
 					}
 
 	 				array_init(&configs);
-					if (zend_parse_ini_file(&fh, 0, 0 /* ZEND_INI_SCANNER_NORMAL */,
-						   	(zend_ini_parser_cb_t)yaf_config_ini_parser_cb, &configs) == FAILURE
+					// 
+					if (zend_parse_ini_file(&fh, 0, 0 /* ZEND_INI_SCANNER_NORMAL */, (zend_ini_parser_cb_t)yaf_config_ini_parser_cb, &configs) == FAILURE
 							|| Z_TYPE(configs) != IS_ARRAY) {
 						zval_ptr_dtor(&configs);
 						yaf_trigger_error(E_ERROR, "Parsing ini file '%s' failed", ini_file);
