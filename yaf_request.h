@@ -22,7 +22,7 @@
 #define YAF_REQUEST_PROPERTY_NAME_ACTION     "action"
 #define YAF_REQUEST_PROPERTY_NAME_METHOD     "method"
 #define YAF_REQUEST_PROPERTY_NAME_PARAMS     "params"
-#define YAF_REQUEST_PROPERTY_NAME_URI        "uri"
+#define YAF_REQUEST_PROPERTY_NAME_URI        "uri"		// _request_uri
 #define YAF_REQUEST_PROPERTY_NAME_STATE      "dispatched"
 #define YAF_REQUEST_PROPERTY_NAME_LANG       "language"
 #define YAF_REQUEST_PROPERTY_NAME_ROUTED     "routed"

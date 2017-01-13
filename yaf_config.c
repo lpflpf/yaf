@@ -52,7 +52,7 @@ yaf_config_t *yaf_config_instance(yaf_config_t *this_ptr, zval *arg1, zval *arg2
 
 	if (Z_TYPE_P(arg1) == IS_STRING) {
 		// 配置文件必须以ini 后缀结尾,不是.ini。不够严谨
-		if (strncasecmp(Z_STRVAL_P(arg1) + Z_STRLEN_P(arg1) - 4, ".ini", 4) == 0) {
+		if (strncasecmp(Z_STRVAL_P(arg1) + Z_STRLEN_P(arg1) - 3, "ini", 3) == 0) {
 			instance = yaf_config_ini_instance(this_ptr, arg1, arg2);
 			if (!instance) {
 				return NULL;

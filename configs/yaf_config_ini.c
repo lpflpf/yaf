@@ -115,6 +115,7 @@ zval *yaf_config_ini_format(yaf_config_t *instance, zval *pzval, zval *rv) /* {{
 /** {{{ static void yaf_config_ini_simple_parser_cb(zval *key, zval *value, zval *index, int callback_type, zval *arr)
 */
 static void yaf_config_ini_simple_parser_cb(zval *key, zval *value, zval *index, int callback_type, zval *arr) {
+	// 参考main/php_ini.c
 	zval element;
 	switch (callback_type) {
 		case ZEND_INI_PARSER_ENTRY:
@@ -177,8 +178,8 @@ static void yaf_config_ini_simple_parser_cb(zval *key, zval *value, zval *index,
 					break;
 				}
 
-				if (!(Z_STRLEN_P(key) > 1 && Z_STRVAL_P(key)[0] == '0')
-						&& is_numeric_string(Z_STRVAL_P(key), Z_STRLEN_P(key), NULL, NULL, 0) == IS_LONG) {
+				// 如果是数字键
+				if (!(Z_STRLEN_P(key) > 1 && Z_STRVAL_P(key)[0] == '0') && is_numeric_string(Z_STRVAL_P(key), Z_STRLEN_P(key), NULL, NULL, 0) == IS_LONG) {
 					zend_ulong skey = (zend_ulong)zend_atol(Z_STRVAL_P(key), Z_STRLEN_P(key));
 					if ((find_hash = zend_hash_index_find(Z_ARRVAL_P(arr), skey)) == NULL) {
 						array_init(&hash);
@@ -249,10 +250,13 @@ static void yaf_config_ini_parser_cb(zval *key, zval *value, zval *index, int ca
 
 		skey_orig = skey = estrndup(Z_STRVAL_P(key), Z_STRLEN_P(key));
 		skey_len = Z_STRLEN_P(key);
+		// ltrim
 		while (*skey == ' ') {
 			*(skey++) = '\0';
 			skey_len--;
 		}
+
+		// rtrim
 		if (skey_len > 1) {
 			seg = skey + skey_len - 1;
 			while (*seg == ' ' || *seg == ':') {
@@ -261,31 +265,37 @@ static void yaf_config_ini_parser_cb(zval *key, zval *value, zval *index, int ca
 			}
 		}
 
+		// string begin: skey, end: seg, len:skey_len;
+
 		array_init(&YAF_G(active_ini_file_section));
 
 		if ((seg = strchr(skey, ':'))) {
-			char *section, *p;
+			char *section, *p /* token end*/;
 
-			if (seg > skey) {
+			if (seg > skey) { // rtrim
 				p = seg - 1;
 				while (*p == ' ' || *p == ':') {
 					*(p--) = '\0';
 				}
 			}
 
+			// ltrim
 			while (*(seg) == ' ' || *(seg) == ':') {
 				*(seg++) = '\0';
 			}
 
 			if ((section = strrchr(seg, ':'))) {
+				// 若是多级的section	
 			    /* muilt-inherit */
 				do {
+					// rtrim
 					if (section > seg) {
 						p = section - 1;
 						while (*p == ' ' || *p == ':') {
 							*(p--) = '\0';
 						}
 					}
+					// ltrim
 					while (*(section) == ' ' || *(section) == ':') {
 						*(section++) = '\0';
 					}

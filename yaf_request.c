@@ -88,6 +88,7 @@ yaf_request_t *yaf_request_instance(yaf_request_t *this_ptr, zend_string *reques
 /* }}} */
 
 int yaf_request_set_base_uri(yaf_request_t *request, zend_string *base_uri, zend_string *request_uri) /* {{{ */ {
+	// 设置yaf request _base_uri
 	if (base_uri == NULL) {
 		zend_string *basename = NULL;
 		zval *script_filename = yaf_request_query_str(YAF_GLOBAL_VARS_SERVER, "SCRIPT_FILENAME", sizeof("SCRIPT_FILENAME") - 1);

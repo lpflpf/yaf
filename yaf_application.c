@@ -111,11 +111,14 @@ int yaf_application_is_module_name_str(char *name, size_t len) /* {{{ */ {
 }
 /* }}} */
 
+// 通过config，初始化application实例
 static int yaf_application_parse_option(zval *options) /* {{{ */ {
 	HashTable *conf;
 	zval *pzval, *psval, *app;
 
 	conf = HASH_OF(options);
+
+	// application 节必须是数组, 保存为app
 	if (UNEXPECTED((app = zend_hash_str_find(conf, ZEND_STRL("application"))) == NULL)) {
 		/* For back compatibilty */
 		if ((app = zend_hash_str_find(conf, ZEND_STRL("yaf"))) == NULL) {
@@ -124,34 +127,41 @@ static int yaf_application_parse_option(zval *options) /* {{{ */ {
 		}
 	}
 
+	// app 必须是数组
 	if (UNEXPECTED(Z_TYPE_P(app) != IS_ARRAY)) {
 		yaf_trigger_error(YAF_ERR_TYPE_ERROR, "%s", "Expected an array of application configure");
 		return FAILURE;
 	}
 
+	// 必须配置application.directory
 	if (UNEXPECTED((pzval = zend_hash_str_find(Z_ARRVAL_P(app),
 					ZEND_STRL("directory"))) == NULL || Z_TYPE_P(pzval) != IS_STRING || Z_STRLEN_P(pzval) == 0)) {
 		yaf_trigger_error(YAF_ERR_STARTUP_FAILED, "%s", "Expected a directory entry in application configures");
 		return FAILURE;
 	}
 
+	// 初始化 directory
 	if (UNEXPECTED(*(Z_STRVAL_P(pzval) + Z_STRLEN_P(pzval) - 1) == DEFAULT_SLASH)) {
 		YAF_G(directory) = zend_string_init(Z_STRVAL_P(pzval), Z_STRLEN_P(pzval) - 1, 0);
 	} else {
 		YAF_G(directory) = zend_string_copy(Z_STR_P(pzval));
 	}
 
+	// 初始化ext
 	if (UNEXPECTED((pzval = zend_hash_str_find(Z_ARRVAL_P(app),
 						ZEND_STRL("ext"))) != NULL && Z_TYPE_P(pzval) == IS_STRING)) {
 		YAF_G(ext) = zend_string_copy(Z_STR_P(pzval));
 	} 
 
+	// 初始化bootstrap
 	if (UNEXPECTED((pzval = zend_hash_str_find(Z_ARRVAL_P(app),
 						ZEND_STRL("bootstrap"))) != NULL && Z_TYPE_P(pzval) == IS_STRING)) {
 		YAF_G(bootstrap) = zend_string_copy(Z_STR_P(pzval));
 	}
 
+	// 若存在library设置
 	if (EXPECTED((pzval = zend_hash_str_find(Z_ARRVAL_P(app), ZEND_STRL("library"))) != NULL)) {
+		// 若只是一个目录
 		if (IS_STRING == Z_TYPE_P(pzval)) {
 			if (*(Z_STRVAL_P(pzval) + Z_STRLEN_P(pzval)) == DEFAULT_SLASH) {
 				YAF_G(local_library) = zend_string_init(Z_STRVAL_P(pzval), Z_STRLEN_P(pzval) - 1, 0);
@@ -159,29 +169,35 @@ static int yaf_application_parse_option(zval *options) /* {{{ */ {
 				YAF_G(local_library) = zend_string_copy(Z_STR_P(pzval));
 			}
 		} else if (IS_ARRAY == Z_TYPE_P(pzval)) {
+			// 设置library,按照namespace &directory 设置
 			if ((psval = zend_hash_str_find(Z_ARRVAL_P(pzval),
 							ZEND_STRL("directory"))) != NULL && Z_TYPE_P(psval) == IS_STRING) {
+				// application.library.directory
 				if (*(Z_STRVAL_P(psval) + Z_STRLEN_P(psval)) == DEFAULT_SLASH) {
 					YAF_G(local_library) = zend_string_init(Z_STRVAL_P(psval), Z_STRLEN_P(psval) - 1, 0);
 				} else {
 					YAF_G(local_library) = zend_string_copy(Z_STR_P(psval));
 				}
 			}
+
 			if ((psval = zend_hash_str_find(Z_ARRVAL_P(pzval),
 							ZEND_STRL("namespace"))) != NULL && Z_TYPE_P(psval) == IS_STRING) {
+				// application.library.namespace
 				uint i, len;
 				char *src = Z_STRVAL_P(psval);
 				if (Z_STRLEN_P(psval)) {
 				    char *target = emalloc(Z_STRLEN_P(psval) + 1);
 					len = 0;
+					// 将, 转换为;
 					for(i=0; i<Z_STRLEN_P(psval); i++) {
 						if (src[i] == ',') {
-							target[len++] = DEFAULT_DIR_SEPARATOR;
+							target[len++] = DEFAULT_DIR_SEPARATOR; // ;
 						} else if (src[i] != ' ') {
 							target[len++] = src[i];
 						}
 					}
 					target[len] = '\0';
+					// 追加至 全局变量local_namespaces 末尾
 					yaf_loader_register_namespace_single(target, len);
 					efree(target);
 				}
@@ -189,6 +205,7 @@ static int yaf_application_parse_option(zval *options) /* {{{ */ {
 		}
 	}
 
+	// 若设置application.view.ext，则初始化模板扩展名
 	if (UNEXPECTED((pzval = zend_hash_str_find(Z_ARRVAL_P(app),
 						ZEND_STRL("view"))) != NULL && Z_TYPE_P(pzval) == IS_ARRAY)) {
 		if (UNEXPECTED((psval = zend_hash_str_find(Z_ARRVAL_P(pzval),
@@ -198,6 +215,7 @@ static int yaf_application_parse_option(zval *options) /* {{{ */ {
 		}
 	}
 
+	// 若设置了application.baseUri, 初始化baseUri
 	if (UNEXPECTED((pzval = zend_hash_str_find(Z_ARRVAL_P(app),
 						ZEND_STRL("baseUri"))) != NULL && Z_TYPE_P(pzval) == IS_STRING)) {
 		YAF_G(base_uri) = zend_string_copy(Z_STR_P(pzval));
@@ -207,6 +225,7 @@ static int yaf_application_parse_option(zval *options) /* {{{ */ {
 						ZEND_STRL("dispatcher"))) != NULL && Z_TYPE_P(pzval) == IS_ARRAY)) {
 		if ((psval = zend_hash_str_find(Z_ARRVAL_P(pzval),
 						ZEND_STRL("defaultModule"))) != NULL && Z_TYPE_P(psval) == IS_STRING) {
+		// 若设置了 application.dispatcher.defaultModule,初始化
 			zend_string_release(YAF_G(default_module));
 			YAF_G(default_module) = zend_string_dup(Z_STR_P(psval), 0);
 			zend_str_tolower(ZSTR_VAL(YAF_G(default_module)), ZSTR_LEN(YAF_G(default_module)));
@@ -215,6 +234,7 @@ static int yaf_application_parse_option(zval *options) /* {{{ */ {
 
 		if ((psval = zend_hash_str_find(Z_ARRVAL_P(pzval),
 						ZEND_STRL("defaultController"))) != NULL && Z_TYPE_P(psval) == IS_STRING) {
+		// 若设置了 application.dispatcher.defaultController,初始化
 			zend_string_release(YAF_G(default_controller));
 			YAF_G(default_controller) = zend_string_dup(Z_STR_P(psval), 0);
 			zend_str_tolower(ZSTR_VAL(YAF_G(default_controller)), ZSTR_LEN(YAF_G(default_controller)));
@@ -223,18 +243,22 @@ static int yaf_application_parse_option(zval *options) /* {{{ */ {
 
 		if ((psval = zend_hash_str_find(Z_ARRVAL_P(pzval),
 						ZEND_STRL("defaultAction"))) != NULL && Z_TYPE_P(psval) == IS_STRING) {
+		// 若设置了 application.dispatcher.defaultAction,初始化
 			zend_string_release(YAF_G(default_action));
 			YAF_G(default_action) = zend_string_tolower(Z_STR_P(psval));
 		}
 
+		// 是否设置throwException
 		if ((psval = zend_hash_str_find(Z_ARRVAL_P(pzval), ZEND_STRL("throwException"))) != NULL) {
 			YAF_G(throw_exception) = zend_is_true(psval);
 		}
 
+		// 是否catchExpcetion
 		if ((psval = zend_hash_str_find(Z_ARRVAL_P(pzval), ZEND_STRL("catchException"))) != NULL) {
 			YAF_G(catch_exception) = zend_is_true(psval);
 		}
 
+		// application.dispatcher.defaultRoute
 		if ((psval = zend_hash_str_find(Z_ARRVAL_P(pzval),
 						ZEND_STRL("defaultRoute"))) != NULL && Z_TYPE_P(psval) == IS_ARRAY) {
 			/* increase the refcount? */
@@ -247,6 +271,7 @@ static int yaf_application_parse_option(zval *options) /* {{{ */ {
 		zval module;
 
 		array_init(&YAF_G(modules));
+		// 初始化application.modules;多个模块按照','分割, 保存至YAF_G(modules)
 		if ((pzval = zend_hash_str_find(Z_ARRVAL_P(app),
 						ZEND_STRL("modules"))) != NULL && Z_TYPE_P(pzval) == IS_STRING && Z_STRLEN_P(pzval)) {
 			char *seg, *modules;
@@ -267,6 +292,8 @@ static int yaf_application_parse_option(zval *options) /* {{{ */ {
 		}
 	} while (0);
 
+	// application.system 配置
+	// 通过设置system.* 配置修改php.ini 里面的配置
 	if ((pzval = zend_hash_str_find(Z_ARRVAL_P(app),
 					ZEND_STRL("system"))) != NULL && Z_TYPE_P(pzval) == IS_ARRAY) {
 		zval *value;
@@ -324,15 +351,18 @@ PHP_METHOD(yaf_application, __construct) {
 
 	self = getThis();
 
-	// 若没有有配置节，则将environ_name
+	// 若没有有配置节，则将environ_name(default:product)作为配置节
 	if (!section || Z_TYPE_P(section) != IS_STRING || !Z_STRLEN_P(section)) {
 		ZVAL_STRING(&zsection, YAF_G(environ_name));
+		// 此处吃实话yaf配置
 		(void)yaf_config_instance(&zconfig, config, &zsection);
 		zval_ptr_dtor(&zsection);
 	} else {
 		(void)yaf_config_instance(&zconfig, config, section);
 	}
 
+	// 此处会通过config配置，初始化applicaiton
+	// 解析失败
 	if  (UNEXPECTED(Z_TYPE(zconfig) != IS_OBJECT
 			|| yaf_application_parse_option(zend_read_property(yaf_config_ce,
 					&zconfig, ZEND_STRL(YAF_CONFIG_PROPERT_NAME), 1, NULL)) == FAILURE)) {
@@ -341,6 +371,7 @@ PHP_METHOD(yaf_application, __construct) {
 		RETURN_FALSE;
 	}
 
+	// 初始化请求实例
 	(void)yaf_request_instance(&zrequest, YAF_G(base_uri));
 
 	if (UNEXPECTED(Z_TYPE(zrequest) != IS_OBJECT)) {

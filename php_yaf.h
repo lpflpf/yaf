@@ -74,7 +74,7 @@ ZEND_BEGIN_MODULE_GLOBALS(yaf)
 	zend_string	*ext;						// 扩展名, php
 	zend_string *base_uri;					
 	zend_string *directory;
-	zend_string *local_library;
+	zend_string *local_library;				// 本地library目录，通过application.library 配置
 	zend_string *local_namespaces;
 	zend_string *view_directory;
 	zend_string *view_ext;					// view 模板的文件扩展名
@@ -84,7 +84,7 @@ ZEND_BEGIN_MODULE_GLOBALS(yaf)
 
 	zend_string *bootstrap;
 	char         *global_library;
-    char         *environ_name;
+    char         *environ_name;				// 配置节
     char         *name_separator;
     size_t        name_separator_len;
 	zend_bool 	lowcase_path;
@@ -102,7 +102,7 @@ ZEND_BEGIN_MODULE_GLOBALS(yaf)
 /* }}} */
 	long		forward_limit;
 	HashTable	*configs;
-	zval 		 modules;
+	zval 		 modules;					// array, 保存多个模块的name
 	zval        *default_route;
 	zval        active_ini_file_section;
 	zval        *ini_wanted_section;		// 设置的配置节

@@ -31,6 +31,10 @@
 
 static zend_class_entry * yaf_request_http_ce;
 
+/**
+ * 初始化request
+ *
+ */
 yaf_request_t *yaf_request_http_instance(yaf_request_t *this_ptr, zend_string *request_uri, zend_string *base_uri) /* {{{ */ {
 	zval method, params;
 	zend_string *settled_uri = NULL;
@@ -39,6 +43,7 @@ yaf_request_t *yaf_request_http_instance(yaf_request_t *this_ptr, zend_string *r
 		object_init_ex(this_ptr, yaf_request_http_ce);
 	}
 
+	// request_info 定义自main/SAPI.h, sapi_request_info 类型
 	if (SG(request_info).request_method) {
 		ZVAL_STRING(&method, (char *)SG(request_info).request_method);
 	} else if (strncasecmp(sapi_module.name, "cli", 3)) {
@@ -134,7 +139,9 @@ yaf_request_t *yaf_request_http_instance(yaf_request_t *this_ptr, zend_string *r
 			zend_string_release(garbage);
 		}
 
+		// 设置 request->_request_uri = settled_uri
 		zend_update_property_str(yaf_request_http_ce, this_ptr, ZEND_STRL(YAF_REQUEST_PROPERTY_NAME_URI), settled_uri);
+		// 设置 request->_base_uri
 		yaf_request_set_base_uri(this_ptr, base_uri, settled_uri);
 		zend_string_release(settled_uri);
 	}
