@@ -140,6 +140,7 @@ yaf_route_t * yaf_route_instance(yaf_route_t *this_ptr, zval *config) {
 
 /** {{{ yaf_route_methods
  */
+// 路由协议，需要实现yaf_route 接口，实现route, assemble 方法
 zend_function_entry yaf_route_methods[] = {
 	PHP_ABSTRACT_ME(yaf_route, route, yaf_route_route_arginfo)
 	PHP_ABSTRACT_ME(yaf_route, assemble, yaf_route_assemble_arginfo)
