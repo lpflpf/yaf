@@ -45,6 +45,9 @@ ZEND_BEGIN_ARG_INFO_EX(yaf_route_regex_construct_arginfo, 0, 0, 2)
 ZEND_END_ARG_INFO()
 /* }}} */
 
+/**
+ * 初始化路由协议
+ */
 yaf_route_t * yaf_route_regex_instance(yaf_route_t *this_ptr, zval *route, zval *def, zval *map, zval *verify, zval *reverse) /* {{{ */ {
 	if (Z_ISUNDEF_P(this_ptr)) {
 		object_init_ex(this_ptr, yaf_route_regex_ce);
@@ -53,6 +56,7 @@ yaf_route_t * yaf_route_regex_instance(yaf_route_t *this_ptr, zval *route, zval 
 	zend_update_property(yaf_route_regex_ce, this_ptr, ZEND_STRL(YAF_ROUTE_PROPETY_NAME_MATCH), route);
 	zend_update_property(yaf_route_regex_ce, this_ptr, ZEND_STRL(YAF_ROUTE_PROPETY_NAME_ROUTE), def);
 
+	/* 正则表达式中，提取的变量映射*/
 	if (map) {
 		zend_update_property(yaf_route_regex_ce, this_ptr, ZEND_STRL(YAF_ROUTE_PROPETY_NAME_MAP), map);
 	}
@@ -64,6 +68,7 @@ yaf_route_t * yaf_route_regex_instance(yaf_route_t *this_ptr, zval *route, zval 
 	}
 	
 
+	/**/
 	if (!reverse || IS_STRING != Z_TYPE_P(reverse)) {
 		zend_update_property_null(yaf_route_regex_ce, this_ptr, ZEND_STRL(YAF_ROUTE_PROPETY_NAME_REVERSE));
 	} else {
@@ -75,6 +80,11 @@ yaf_route_t * yaf_route_regex_instance(yaf_route_t *this_ptr, zval *route, zval 
 /* }}} */
 
 /** {{{ static int yaf_route_regex_match(yaf_route_t *router, zend_string *uri, zval *ret)
+ */
+
+/**
+ *
+ * ret 为正则中提取的args
  */
 static int yaf_route_regex_match(yaf_route_t *route, zend_string *uri, zval *ret) {
 	zval *match;
@@ -98,10 +108,11 @@ static int yaf_route_regex_match(yaf_route_t *route, zend_string *uri, zval *ret
 		php_pcre_match_impl(pce_regexp, ZSTR_VAL(uri), ZSTR_LEN(uri), &matches, &subparts /* subpats */,
 				0/* global */, 0/* ZEND_NUM_ARGS() >= 4 */, 0/*flags PREG_OFFSET_CAPTURE*/, 0/* start_offset */);
 
+		// 返回子组若为空，则返回
 		if (!zend_hash_num_elements(Z_ARRVAL(subparts))) {
 			zval_ptr_dtor(&subparts);
 			return 0;
-		} else {
+		} else { // 返回子组不为空，则填充至ret中.
 			zval *name, *pzval;
 			zend_string	*key = NULL;
 			ulong idx = 0;
@@ -110,11 +121,12 @@ static int yaf_route_regex_match(yaf_route_t *route, zend_string *uri, zval *ret
 			array_init(ret);
 
 			ht = Z_ARRVAL(subparts);
+			// 如果使用了命名子组，则key非空
 			ZEND_HASH_FOREACH_KEY_VAL(ht, idx, key, pzval) {
 				if (key) {
 					Z_TRY_ADDREF_P(pzval);
 					zend_hash_update(Z_ARRVAL_P(ret), key, pzval);
-				} else {	
+				} else {
 					if (Z_TYPE_P(map) == IS_ARRAY &&
 						(name = zend_hash_index_find(Z_ARRVAL_P(map), idx)) != NULL && Z_TYPE_P(name) == IS_STRING) {
 						Z_TRY_ADDREF_P(pzval);
@@ -132,6 +144,11 @@ static int yaf_route_regex_match(yaf_route_t *route, zend_string *uri, zval *ret
 
 /** {{{ zend_string * yaf_route_regex_assemble(yaf_route_t *this_ptr, zval *info, zval *query)
  */
+/**
+ * 做拼装，得到一个uri.
+ * info 
+ * query 
+ */
 zend_string * yaf_route_regex_assemble(yaf_route_t *this_ptr, zval *info, zval *query) {
 	zval *reverse;
 	zval *zv;
@@ -147,6 +164,8 @@ zend_string * yaf_route_regex_assemble(yaf_route_t *this_ptr, zval *info, zval *
 
 	uri = zend_string_copy(Z_STR_P(reverse));
 
+	// :m => xxx
+	// php_str_to_str 字符串替换
 	if ((zv = zend_hash_str_find(Z_ARRVAL_P(info), ZEND_STRL(YAF_ROUTE_ASSEMBLE_MOUDLE_FORMAT))) != NULL) {
 		val = zval_get_string(zv);
 		inter = php_str_to_str(ZSTR_VAL(uri), ZSTR_LEN(uri),
@@ -156,6 +175,7 @@ zend_string * yaf_route_regex_assemble(yaf_route_t *this_ptr, zval *info, zval *
 		uri = inter;
 	}
 
+	// :c => xxx
 	if ((zv = zend_hash_str_find(Z_ARRVAL_P(info), ZEND_STRL(YAF_ROUTE_ASSEMBLE_CONTROLLER_FORMAT))) != NULL) {
 		val = zval_get_string(zv);
 		inter = php_str_to_str(ZSTR_VAL(uri), ZSTR_LEN(uri),
@@ -165,6 +185,7 @@ zend_string * yaf_route_regex_assemble(yaf_route_t *this_ptr, zval *info, zval *
 		uri = inter;
 	}
 
+	// :a => xxx
 	if ((zv = zend_hash_str_find(Z_ARRVAL_P(info), ZEND_STRL(YAF_ROUTE_ASSEMBLE_ACTION_FORMAT))) != NULL) {
 		val = zval_get_string(zv);
 		inter = php_str_to_str(ZSTR_VAL(uri), ZSTR_LEN(uri),
@@ -174,6 +195,7 @@ zend_string * yaf_route_regex_assemble(yaf_route_t *this_ptr, zval *info, zval *
 		uri = inter;
 	}
 
+	// 将query 转换为查询字符串
 	if (query && IS_ARRAY == Z_TYPE_P(query)) {
 		zend_string *key;
 		HashTable *ht = Z_ARRVAL_P(query);
@@ -221,6 +243,9 @@ int yaf_route_regex_route(yaf_route_t *router, yaf_request_t *request) {
 		request_uri = zend_string_copy(Z_STR_P(zuri));
 	}
 
+	// 通过request_uri, 匹配正则，将需要的提取值保存在args中.
+	// router 中保存了路由信息
+	// 没有匹配成功，返回0
 	if (!yaf_route_regex_match(router, request_uri, &args)) {
 		zend_string_release(request_uri);
 		return 0;
@@ -234,6 +259,7 @@ int yaf_route_regex_route(yaf_route_t *router, yaf_request_t *request) {
 				zend_update_property(yaf_request_ce, request, ZEND_STRL(YAF_REQUEST_PROPERTY_NAME_MODULE), module);
 			} else {
 				zval *m;
+			// 若进行了参数化，则从args中得到module
 				if ((m = zend_hash_str_find(Z_ARRVAL(args), Z_STRVAL_P(module) + 1, Z_STRLEN_P(module) - 1)) != NULL
 						&& IS_STRING == Z_TYPE_P(m)) {
 					zend_update_property(yaf_request_ce, request, ZEND_STRL(YAF_REQUEST_PROPERTY_NAME_MODULE), m);
@@ -265,6 +291,7 @@ int yaf_route_regex_route(yaf_route_t *router, yaf_request_t *request) {
 			}
 		}
 
+		// 更新request->_args参数
 		(void)yaf_request_set_params_multi(request, &args);
 		zval_ptr_dtor(&args);
 		zend_string_release(request_uri);

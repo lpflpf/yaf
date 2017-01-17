@@ -75,12 +75,15 @@ static int yaf_route_rewrite_match(yaf_route_t *router, zend_string *uri, zval *
 		return 0;
 	}
 
+	// 保存了rewrite的第一个参数，
 	match  = zend_read_property(yaf_route_rewrite_ce, router, ZEND_STRL(YAF_ROUTE_PROPETY_NAME_MATCH), 0, NULL);
 	pmatch = estrndup(Z_STRVAL_P(match), Z_STRLEN_P(match));
 
+	// pattern 追加#^
 	smart_str_appendc(&pattern, YAF_ROUTE_REGEX_DILIMITER);
 	smart_str_appendc(&pattern, '^');
 
+	// 按照/ 分割
 	seg = php_strtok_r(pmatch, YAF_ROUTER_URL_DELIMIETER, &ptrptr);
 	while (seg) {
 		seg_len = strlen(seg);
@@ -92,11 +95,14 @@ static int yaf_route_rewrite_match(yaf_route_t *router, zend_string *uri, zval *
 				break;
 			}
 
+			// 通过PCRE的函数preg_match 命名子组,提取各个字段值
+			// :ident/ ==> (?P<ident>[^/]+)
 			if(*(seg) == ':') {
 				smart_str_appendl(&pattern, "(?P<", sizeof("(?P<") -1 );
 				smart_str_appendl(&pattern, seg + 1, seg_len - 1);
 				smart_str_appendl(&pattern, ">[^"YAF_ROUTER_URL_DELIMIETER"]+)", sizeof(">[^"YAF_ROUTER_URL_DELIMIETER"]+)") - 1);
 			} else {
+				// 不需要rewrite
 				smart_str_appendl(&pattern, seg, seg_len);
 			}
 
@@ -134,6 +140,7 @@ static int yaf_route_rewrite_match(yaf_route_t *router, zend_string *uri, zval *
 			ht = Z_ARRVAL(subparts);
 			ZEND_HASH_FOREACH_STR_KEY_VAL(ht, key, pzval) {
                 if (key) {
+					// 用*得到的字串, 作为键值对插入到keys 中
                     if (zend_string_equals_literal(key, "__yaf_route_rest")) {
                         zval args;
                         (void)yaf_router_parse_parameters(Z_STRVAL_P(pzval), &args);
@@ -176,6 +183,8 @@ int yaf_route_rewrite_route(yaf_route_t *router, yaf_request_t *request) {
 		zval *module, *controller, *action, *routes;
 
 		routes = zend_read_property(yaf_route_rewrite_ce, router, ZEND_STRL(YAF_ROUTE_PROPETY_NAME_ROUTE), 1, NULL);
+
+		// 与 yaf_route_regex 类似
 		if ((module = zend_hash_str_find(Z_ARRVAL_P(routes), ZEND_STRL("module"))) != NULL && IS_STRING == Z_TYPE_P(module)) {
 			if (Z_STRVAL_P(module)[0] != ':') {
 				zend_update_property(yaf_request_ce, request, ZEND_STRL(YAF_REQUEST_PROPERTY_NAME_MODULE), module);
@@ -242,6 +251,9 @@ PHP_METHOD(yaf_route_rewrite, route) {
 
 /** {{{ zend_string * yaf_route_rewrite_assemble(yaf_route_t *this_ptr, zval *info, zval *query)
  */
+
+// 拼装出一个url
+// 给出一条路由，mca,以及query，构造一个uri.
 zend_string * yaf_route_rewrite_assemble(yaf_route_t *this_ptr, zval *info, zval *query) {
 	zval *match, pidents, *zv;
 	char *seg, *pmatch, *ptrptr;
@@ -264,6 +276,7 @@ zend_string * yaf_route_rewrite_assemble(yaf_route_t *this_ptr, zval *info, zval
 			if (*(seg) == '*') {
 				ZEND_HASH_FOREACH_STR_KEY_VAL(Z_ARRVAL(pidents), key, zv) {
 					if (key) {
+						// key + / value/
 						if (IS_STRING == Z_TYPE_P(zv)) {
 							smart_str_appendl(&wildcard, ZSTR_VAL(key) + 1, ZSTR_LEN(key) - 1);
 							smart_str_appendl(&wildcard, YAF_ROUTER_URL_DELIMIETER, 1);

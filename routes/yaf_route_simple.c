@@ -127,6 +127,7 @@ zend_string * yaf_route_simple_assemble(yaf_route_t *this_ptr, zval *info, zval 
 	do {
 		zval *zv;
 
+		// 转换成 $m=&$c=&$a=
 		if ((zv = zend_hash_str_find(Z_ARRVAL_P(info), ZEND_STRL(YAF_ROUTE_ASSEMBLE_MOUDLE_FORMAT))) != NULL) {
 			val = zval_get_string(zv);
 			smart_str_appendl(&uri, Z_STRVAL_P(nmodule), Z_STRLEN_P(nmodule));

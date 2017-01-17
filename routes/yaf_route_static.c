@@ -40,6 +40,9 @@ ZEND_BEGIN_ARG_INFO_EX(yaf_route_static_match_arginfo, 0, 0, 1)
 ZEND_END_ARG_INFO()
 /* }}} */
 
+/**
+ * 通过定义的合法模块，以及请求路径，设置mca
+ */
 int yaf_route_pathinfo_route(yaf_request_t *request, zend_string *req_uri) /* {{{ */ {
 	zval params;
 	char *module = NULL, *controller = NULL, *action = NULL, *rest = NULL;
@@ -58,7 +61,7 @@ int yaf_route_pathinfo_route(yaf_request_t *request, zend_string *req_uri) /* {{
 		uri = ZSTR_VAL(req_uri);
 		s = p = uri;
 
-		if (ZSTR_LEN(req_uri)) {
+		if (ZSTR_LEN(req_uri)) {		// ??? 这句话没有用吧
 			char *q = ZSTR_VAL(req_uri) + ZSTR_LEN(req_uri) - 1;
 			while (q > (char *)ZSTR_VAL(req_uri) && (*q == ' ' || *q == '/')) {
 				*q-- = '\0';
@@ -93,6 +96,7 @@ int yaf_route_pathinfo_route(yaf_request_t *request, zend_string *req_uri) /* {{
 		}
 
 		strip_slashs(p);
+		// ??
 		if (*p != '\0') {
 			do {
 				if (!module && !controller && !action) {
