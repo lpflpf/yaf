@@ -354,7 +354,7 @@ PHP_METHOD(yaf_application, __construct) {
 	// 若没有有配置节，则将environ_name(default:product)作为配置节
 	if (!section || Z_TYPE_P(section) != IS_STRING || !Z_STRLEN_P(section)) {
 		ZVAL_STRING(&zsection, YAF_G(environ_name));
-		// 此处吃实话yaf配置
+		// 此处初始化yaf配置
 		(void)yaf_config_instance(&zconfig, config, &zsection);
 		zval_ptr_dtor(&zsection);
 	} else {
